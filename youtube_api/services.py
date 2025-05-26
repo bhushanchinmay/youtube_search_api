@@ -162,4 +162,5 @@ def start_service():
         time.sleep(TIME_INTERVAL)
 
 
-THREAD = threading.Thread(target=start_service)
+THREAD_STARTED_FLAG = False
+THREAD = threading.Thread(target=start_service, daemon=True)
