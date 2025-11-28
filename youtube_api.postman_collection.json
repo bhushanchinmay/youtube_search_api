@@ -1,0 +1,68 @@
+{
+	"info": {
+		"_postman_id": "youtube-api-collection",
+		"name": "Youtube API Project",
+		"description": "Collection for testing the Youtube API project endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Videos",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/youtube_api/get_videos",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"youtube_api",
+						"get_videos"
+					]
+				},
+				"description": "Fetches the latest videos stored in the database, sorted by reverse chronological order."
+			},
+			"response": []
+		},
+		{
+			"name": "Add API Key",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"key\": \"YOUR_API_KEY_HERE\"\n}"
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/youtube_api/add_key",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"youtube_api",
+						"add_key"
+					]
+				},
+				"description": "Adds a new YouTube Data API key to the database."
+			},
+			"response": []
+		}
+	]
+}
