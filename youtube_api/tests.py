@@ -1,10 +1,12 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+from . import models
 
 class VideoAPITests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        models.APIKey.objects.create(key="test_key")
 
     def test_get_videos_endpoint_success(self):
         # Try to reverse the URL name if it's defined, otherwise use the hardcoded path
