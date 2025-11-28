@@ -26,11 +26,11 @@ def fetch_result_for_search_query(query, max_results):
     if not len(api_keys):
         return {}
 
-    DEVELOPER_KEY = api_keys[0]
+    api_key_obj = api_keys[0]
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
-                               developerKey=DEVELOPER_KEY.key)
+                               developerKey=api_key_obj.key)
         search_keyword = youtube_object.search().list(q=query, part="id, snippet",
                                                       maxResults=max_results).execute()
 
