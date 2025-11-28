@@ -59,6 +59,19 @@ The project requires a valid Google YouTube Data API Key to function. Without it
 
 Alternatively, you can add a key via the API (see below).
 
+## Testing with Postman
+
+A Postman collection is included to help you test the API easily.
+
+1.  **Install Postman**: Download and install [Postman](https://www.postman.com/downloads/).
+2.  **Import Collection**:
+    *   Open Postman.
+    *   Click "Import".
+    *   Select the file `youtube_api.postman_collection.json` from the root of this project.
+3.  **Use**:
+    *   **Get Videos**: Send a GET request to retrieve stored videos.
+    *   **Add API Key**: Use the `Add API Key` request. Go to the "Body" tab and replace `"YOUR_API_KEY_HERE"` with your actual Google YouTube API Key before sending.
+
 ## API Endpoints
 
 ### 1. Get Videos

@@ -37,8 +37,8 @@ def fetch_result_for_search_query(query, max_results):
         results = search_keyword.get("items", [])
     except HttpError as e:
         if e.resp.status in [403, 429]:  # Quota exceeded or too many requests
-            DEVELOPER_KEY.is_limit_over = True
-            DEVELOPER_KEY.save()
+            api_key_obj.is_limit_over = True
+            api_key_obj.save()
         return {}
     except Exception:
         # Log unexpected errors but don't mark key as limit over
@@ -146,7 +146,8 @@ async def search_and_store_youtube_videos():
         search_results = fetch_result_for_search_query('today news', 10)
 
         if not search_results:
-            return
+            await asyncio.sleep(10)
+            continue
 
         for result in search_results:
             video_date_time_obj = get_date_time_object_from_string(
