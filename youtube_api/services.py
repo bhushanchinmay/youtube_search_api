@@ -4,6 +4,7 @@ import threading
 import time
 
 from apiclient.discovery import build
+from googleapiclient.errors import HttpError
 from django.db import connections
 
 from . import models
@@ -29,14 +30,18 @@ def fetch_result_for_search_query(query, max_results):
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
-                               developerKey=DEVELOPER_KEY)
+                               developerKey=DEVELOPER_KEY.key)
         search_keyword = youtube_object.search().list(q=query, part="id, snippet",
                                                       maxResults=max_results).execute()
 
         results = search_keyword.get("items", [])
-    except:
-        api_keys[0].is_limit_over = True
-        api_keys[0].save()
+    except HttpError as e:
+        if e.resp.status in [403, 429]:  # Quota exceeded or too many requests
+            DEVELOPER_KEY.is_limit_over = True
+            DEVELOPER_KEY.save()
+        return {}
+    except Exception:
+        # Log unexpected errors but don't mark key as limit over
         return {}
 
     return results
@@ -108,20 +113,20 @@ def store_video_to_db(result):
 def get_most_recent_video_time():
     """get most recent time for uploaded video.
 
-    :return: datetime object
+    :return: datetime object or None
     """
-    recent_date_time = ''
+    recent_date_time = None
     search_results = fetch_result_for_search_query('today news', 10)
 
-    if search_results == {}:
-        return
+    if not search_results:
+        return None
 
     for result in search_results:
         video_date_time_obj = get_date_time_object_from_string(
             result['snippet']['publishedAt'])
         store_video_to_db(result)
 
-        if not recent_date_time:
+        if recent_date_time is None:
             recent_date_time = video_date_time_obj
 
         recent_date_time = max(recent_date_time, video_date_time_obj)
@@ -134,10 +139,13 @@ async def search_and_store_youtube_videos():
     """
     resent_date_time = get_most_recent_video_time()
 
+    if resent_date_time is None:
+        resent_date_time = datetime.datetime.min
+
     while True:
         search_results = fetch_result_for_search_query('today news', 10)
 
-        if search_results == {}:
+        if not search_results:
             return
 
         for result in search_results:
