@@ -1,10 +1,10 @@
 from django import forms
-from rest_framework import generics
+from rest_framework import generics, exceptions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import JSONRenderer
 
-import models
-import serializers
+from . import models
+from . import serializers
 
 
 class GetVideosPagination(PageNumberPagination):
@@ -23,7 +23,7 @@ class GetVideos(generics.ListAPIView):
     def get_queryset(self):
         api_keys = models.APIKey.objects.filter(is_limit_over=False)
         if not len(api_keys):
-            raise forms.ValidationError("APIKey Quota is over, Add a new APIKey")
+            raise exceptions.ValidationError("APIKey Quota is over, Add a new APIKey")
         return models.Video.objects.all().order_by('-publish_date_time')
 
 
