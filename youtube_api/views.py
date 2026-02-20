@@ -21,8 +21,7 @@ class GetVideos(generics.ListAPIView):
     pagination_class = GetVideosPagination
 
     def get_queryset(self):
-        api_keys = models.APIKey.objects.filter(is_limit_over=False)
-        if not len(api_keys):
+        if not models.APIKey.objects.filter(is_limit_over=False).exists():
             raise exceptions.ValidationError("APIKey Quota is over, Add a new APIKey")
         return models.Video.objects.all().order_by('-publish_date_time')
 
