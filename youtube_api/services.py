@@ -21,12 +21,10 @@ def fetch_result_for_search_query(query, max_results):
     :param max_results: maximum number of results using the youtube_api.
     :return: dictionary of all the videos.
     """
-    api_keys = models.APIKey.objects.filter(is_limit_over=False)
+    api_key_obj = models.APIKey.objects.filter(is_limit_over=False).first()
 
-    if not len(api_keys):
+    if not api_key_obj:
         return {}
-
-    api_key_obj = api_keys[0]
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
@@ -165,8 +163,7 @@ def start_service():
 
     """
     while True:
-        api_keys = models.APIKey.objects.filter(is_limit_over=False)
-        if len(api_keys):
+        if models.APIKey.objects.filter(is_limit_over=False).exists():
             asyncio.run(search_and_store_youtube_videos())
         time.sleep(TIME_INTERVAL)
 
