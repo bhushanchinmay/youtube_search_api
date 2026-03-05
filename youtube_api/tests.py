@@ -1,6 +1,41 @@
-from django.test import TestCase, Client
+import datetime
+from django.test import TestCase, Client, SimpleTestCase
 from django.urls import reverse
-from . import models
+from . import models, services
+
+class ServiceTests(SimpleTestCase):
+    def test_get_desired_video_details_missing_video_id(self):
+        """Test video_id is empty string when missing in result['id']."""
+        result = {
+            'id': {'kind': 'youtube#channel'},
+            'snippet': {
+                'title': 'Test Title',
+                'description': 'Test Description',
+                'channelId': 'TestChannelID',
+                'publishedAt': '2023-10-27T10:00:00Z',
+            }
+        }
+        details = services.get_desired_video_details(result)
+        self.assertEqual(details['video_id'], '')
+        self.assertEqual(details['title'], 'Test Title')
+        self.assertEqual(details['description'], 'Test Description')
+        self.assertEqual(details['channel_id'], 'TestChannelID')
+        self.assertEqual(details['publish_date_time'], datetime.datetime(2023, 10, 27, 10, 0, 0))
+
+    def test_get_desired_video_details_with_video_id(self):
+        """Test video_id is correctly extracted when present in result['id']."""
+        result = {
+            'id': {'kind': 'youtube#video', 'videoId': '12345'},
+            'snippet': {
+                'title': 'Test Title',
+                'description': 'Test Description',
+                'channelId': 'TestChannelID',
+                'publishedAt': '2023-10-27T10:00:00Z',
+            }
+        }
+        details = services.get_desired_video_details(result)
+        self.assertEqual(details['video_id'], '12345')
+
 
 class VideoAPITests(TestCase):
 
