@@ -1,6 +1,36 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, SimpleTestCase
 from django.urls import reverse
-from . import models
+from . import models, services
+
+class VideoServiceTests(SimpleTestCase):
+    def test_get_desired_video_details_with_video_id(self):
+        result = {
+            'id': {'videoId': 'test_id'},
+            'snippet': {
+                'title': 'test title',
+                'description': 'test description',
+                'channelId': 'test_channel_id',
+                'publishedAt': '2023-10-27T12:00:00Z'
+            }
+        }
+        output = services.get_desired_video_details(result)
+        self.assertEqual(output['video_id'], 'test_id')
+        self.assertEqual(output['title'], 'test title')
+        self.assertEqual(output['description'], 'test description')
+        self.assertEqual(output['channel_id'], 'test_channel_id')
+
+    def test_get_desired_video_details_missing_video_id(self):
+        result = {
+            'id': {}, # missing videoId
+            'snippet': {
+                'title': 'test title',
+                'description': 'test description',
+                'channelId': 'test_channel_id',
+                'publishedAt': '2023-10-27T12:00:00Z'
+            }
+        }
+        output = services.get_desired_video_details(result)
+        self.assertEqual(output['video_id'], '')
 
 class VideoAPITests(TestCase):
 
