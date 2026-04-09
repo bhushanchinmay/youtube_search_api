@@ -29,3 +29,14 @@ class VideoAPITests(TestCase):
         # or specific keys if data is expected. For a basic test, status 200 is sufficient.
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
+
+    def test_add_key_endpoint_unauthenticated(self):
+        """Test that adding an API key without authentication returns 403."""
+        try:
+            url = reverse('youtube_api:add_key')
+        except: # noqa
+            url = '/youtube_api/add_key'
+
+        response = self.client.post(url, {'key': 'new_test_key'})
+        # Should be 403 Forbidden because authentication is now required
+        self.assertEqual(response.status_code, 403)
