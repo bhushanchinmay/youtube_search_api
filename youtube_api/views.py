@@ -2,6 +2,7 @@ from django import forms
 from rest_framework import generics, exceptions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import JSONRenderer
+from rest_framework.permissions import IsAuthenticated
 
 from . import models
 from . import serializers
@@ -33,3 +34,4 @@ class AddAPIKey(generics.CreateAPIView):
     """
     renderer_classes = [JSONRenderer]
     serializer_class = serializers.APIKeySerializer
+    permission_classes = [IsAuthenticated]

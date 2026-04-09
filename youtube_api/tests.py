@@ -1,6 +1,9 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 from . import models
+
+User = get_user_model()
 
 class VideoAPITests(TestCase):
 
@@ -29,3 +32,27 @@ class VideoAPITests(TestCase):
         # or specific keys if data is expected. For a basic test, status 200 is sufficient.
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
+
+class SecurityTests(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        # Based on project structure: /youtube_api/add_key
+        try:
+            self.url = reverse('youtube_api:add_key')
+        except: # noqa
+            self.url = '/youtube_api/add_key'
+
+    def test_add_api_key_unauthenticated(self):
+        """Test that unauthenticated requests to add_key are rejected."""
+        response = self.client.post(self.url, {'key': 'new_test_key'})
+        # DRF returns 403 Forbidden for IsAuthenticated failure by default
+        self.assertEqual(response.status_code, 403)
+
+    def test_add_api_key_authenticated(self):
+        """Test that authenticated requests to add_key are accepted."""
+        self.client.login(username='testuser', password='testpassword')
+        response = self.client.post(self.url, {'key': 'new_test_key'})
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(models.APIKey.objects.filter(key='new_test_key').exists())
