@@ -84,10 +84,11 @@ def get_video_thumbnails(result):
     :param result: youtube_api response.
     :return: list of details required for thumbnails.
     """
+    thumbnails = (result.get('snippet') or {}).get('thumbnails') or {}
     return [{
         'screen_size': screen_size,
-        'url': result['snippet']['thumbnails'][screen_size]['url'],
-    } for screen_size in result['snippet']['thumbnails']]
+        'url': thumbnails.get(screen_size, {}).get('url'),
+    } for screen_size in thumbnails]
 
 
 def store_video_to_db(result):
