@@ -23,9 +23,10 @@ def fetch_result_for_search_query(query, max_results):
     """
     api_keys = models.APIKey.objects.filter(is_limit_over=False)
 
-    api_key_obj = api_keys.first()
-    if not api_key_obj:
+    if not api_keys.exists():
         return {}
+
+    api_key_obj = api_keys.first()
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
@@ -83,10 +84,11 @@ def get_video_thumbnails(result):
     :param result: youtube_api response.
     :return: list of details required for thumbnails.
     """
+    thumbnails = (result.get('snippet') or {}).get('thumbnails') or {}
     return [{
         'screen_size': screen_size,
-        'url': result['snippet']['thumbnails'][screen_size]['url'],
-    } for screen_size in result['snippet']['thumbnails']]
+        'url': thumbnails.get(screen_size, {}).get('url'),
+    } for screen_size in thumbnails]
 
 
 def store_video_to_db(result):
@@ -99,10 +101,12 @@ def store_video_to_db(result):
     video_obj.save()
 
     thumbnails = get_video_thumbnails(result)
+    thumbnail_objs = []
     for thumbnail in thumbnails:
         thumbnail['video'] = video_obj
-        thumbnail_obj = models.VideoThumbnail(**thumbnail)
-        thumbnail_obj.save()
+        thumbnail_objs.append(models.VideoThumbnail(**thumbnail))
+
+    models.VideoThumbnail.objects.bulk_create(thumbnail_objs)
 
     # closing all connections
     for conn in connections.all():

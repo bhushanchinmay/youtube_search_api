@@ -1,5 +1,5 @@
 from django import forms
-from rest_framework import generics, exceptions
+from rest_framework import generics, exceptions, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import JSONRenderer
 
@@ -31,5 +31,6 @@ class AddAPIKey(generics.CreateAPIView):
     """view for adding a new Youtube Data API Key in the database.
 
     """
+    permission_classes = [permissions.IsAuthenticated]
     renderer_classes = [JSONRenderer]
     serializer_class = serializers.APIKeySerializer
