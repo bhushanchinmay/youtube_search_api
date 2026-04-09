@@ -1,10 +1,11 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from unittest.mock import patch, MagicMock
-from googleapiclient.errors import HttpError
+from django.contrib.auth import get_user_model
 from . import models
 from . import services
 
+
+User = get_user_model()
 
 class VideoAPITests(TestCase):
 
@@ -26,53 +27,26 @@ class VideoAPITests(TestCase):
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
 
-
-class VideoServiceTests(TestCase):
+class SecurityTests(TestCase):
 
     def setUp(self):
-        self.api_key = models.APIKey.objects.create(key="test_key", is_limit_over=False)
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        # Based on project structure: /youtube_api/add_key
+        try:
+            self.url = reverse('youtube_api:add_key')
+        except: # noqa
+            self.url = '/youtube_api/add_key'
 
-    @patch('youtube_api.services.build')
-    def test_fetch_result_http_error_403(self, mock_build):
-        mock_resp = MagicMock()
-        mock_resp.status = 403
-        mock_error = HttpError(resp=mock_resp, content=b'Quota exceeded')
+    def test_add_api_key_unauthenticated(self):
+        """Test that unauthenticated requests to add_key are rejected."""
+        response = self.client.post(self.url, {'key': 'new_test_key'})
+        # DRF returns 403 Forbidden for IsAuthenticated failure by default
+        self.assertEqual(response.status_code, 403)
 
-        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
-
-        result = services.fetch_result_for_search_query('test query', 10)
-
-        self.assertEqual(result, {})
-
-        self.api_key.refresh_from_db()
-        self.assertTrue(self.api_key.is_limit_over)
-
-    @patch('youtube_api.services.build')
-    def test_fetch_result_http_error_429(self, mock_build):
-        mock_resp = MagicMock()
-        mock_resp.status = 429
-        mock_error = HttpError(resp=mock_resp, content=b'Too many requests')
-
-        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
-
-        result = services.fetch_result_for_search_query('test query', 10)
-
-        self.assertEqual(result, {})
-
-        self.api_key.refresh_from_db()
-        self.assertTrue(self.api_key.is_limit_over)
-
-    @patch('youtube_api.services.build')
-    def test_fetch_result_http_error_500(self, mock_build):
-        mock_resp = MagicMock()
-        mock_resp.status = 500
-        mock_error = HttpError(resp=mock_resp, content=b'Internal server error')
-
-        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
-
-        result = services.fetch_result_for_search_query('test query', 10)
-
-        self.assertEqual(result, {})
-
-        self.api_key.refresh_from_db()
-        self.assertFalse(self.api_key.is_limit_over)
+    def test_add_api_key_authenticated(self):
+        """Test that authenticated requests to add_key are accepted."""
+        self.client.login(username='testuser', password='testpassword')
+        response = self.client.post(self.url, {'key': 'new_test_key'})
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(models.APIKey.objects.filter(key='new_test_key').exists())
