@@ -1,6 +1,10 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+from unittest.mock import patch, MagicMock
+from googleapiclient.errors import HttpError
 from . import models
+from . import services
+
 
 class VideoAPITests(TestCase):
 
@@ -29,3 +33,54 @@ class VideoAPITests(TestCase):
         # or specific keys if data is expected. For a basic test, status 200 is sufficient.
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
+
+
+class VideoServiceTests(TestCase):
+
+    def setUp(self):
+        self.api_key = models.APIKey.objects.create(key="test_key", is_limit_over=False)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_403(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 403
+        mock_error = HttpError(resp=mock_resp, content=b'Quota exceeded')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertTrue(self.api_key.is_limit_over)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_429(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 429
+        mock_error = HttpError(resp=mock_resp, content=b'Too many requests')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertTrue(self.api_key.is_limit_over)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_500(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 500
+        mock_error = HttpError(resp=mock_resp, content=b'Internal server error')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertFalse(self.api_key.is_limit_over)
