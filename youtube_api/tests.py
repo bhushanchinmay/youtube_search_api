@@ -10,7 +10,9 @@ class VideoAPITests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.api_client = APIClient()
         models.APIKey.objects.create(key="test_key")
+        self.user = get_user_model().objects.create_user(username='testuser', password='password')
 
     def test_get_videos_endpoint_success(self):
         # Try to reverse the URL name if it's defined, otherwise use the hardcoded path
