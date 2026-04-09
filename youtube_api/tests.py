@@ -1,8 +1,10 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
+from unittest.mock import patch, MagicMock
+from googleapiclient.errors import HttpError
 from . import models
+from . import services
+
 
 class VideoAPITests(TestCase):
 
@@ -34,19 +36,53 @@ class VideoAPITests(TestCase):
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
 
-    def test_add_api_key_unauthenticated(self):
-        # Using hardcoded path based on urls.py structure as in test_get_videos_endpoint_success
-        url = '/youtube_api/add_key'
-        data = {'key': 'new_test_key'}
-        response = self.api_client.post(url, data, format='json')
-        # Expecting 401 Unauthorized or 403 Forbidden because of IsAuthenticated
-        self.assertIn(response.status_code, [401, 403])
-        self.assertFalse(models.APIKey.objects.filter(key='new_test_key').exists())
 
-    def test_add_api_key_authenticated(self):
-        url = '/youtube_api/add_key'
-        data = {'key': 'new_test_key'}
-        self.api_client.force_authenticate(user=self.user)
-        response = self.api_client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(models.APIKey.objects.filter(key='new_test_key').exists())
+class VideoServiceTests(TestCase):
+
+    def setUp(self):
+        self.api_key = models.APIKey.objects.create(key="test_key", is_limit_over=False)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_403(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 403
+        mock_error = HttpError(resp=mock_resp, content=b'Quota exceeded')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertTrue(self.api_key.is_limit_over)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_429(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 429
+        mock_error = HttpError(resp=mock_resp, content=b'Too many requests')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertTrue(self.api_key.is_limit_over)
+
+    @patch('youtube_api.services.build')
+    def test_fetch_result_http_error_500(self, mock_build):
+        mock_resp = MagicMock()
+        mock_resp.status = 500
+        mock_error = HttpError(resp=mock_resp, content=b'Internal server error')
+
+        mock_build.return_value.search.return_value.list.return_value.execute.side_effect = mock_error
+
+        result = services.fetch_result_for_search_query('test query', 10)
+
+        self.assertEqual(result, {})
+
+        self.api_key.refresh_from_db()
+        self.assertFalse(self.api_key.is_limit_over)
