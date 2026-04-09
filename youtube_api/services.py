@@ -100,10 +100,11 @@ def store_video_to_db(result):
     video_obj.save()
 
     thumbnails = get_video_thumbnails(result)
+    thumbnail_instances = []
     for thumbnail in thumbnails:
         thumbnail['video'] = video_obj
-        thumbnail_obj = models.VideoThumbnail(**thumbnail)
-        thumbnail_obj.save()
+        thumbnail_instances.append(models.VideoThumbnail(**thumbnail))
+    models.VideoThumbnail.objects.bulk_create(thumbnail_instances)
 
     # closing all connections
     for conn in connections.all():
