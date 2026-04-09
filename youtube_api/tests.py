@@ -1,6 +1,39 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, SimpleTestCase
 from django.urls import reverse
 from . import models
+from .services import get_video_thumbnails
+
+class VideoServiceTests(SimpleTestCase):
+    def test_get_video_thumbnails_success(self):
+        """Test extraction of multiple thumbnails from a mock result."""
+        result = {
+            'snippet': {
+                'thumbnails': {
+                    'default': {'url': 'https://example.com/default.jpg'},
+                    'medium': {'url': 'https://example.com/medium.jpg'},
+                    'high': {'url': 'https://example.com/high.jpg'},
+                }
+            }
+        }
+        expected_output = [
+            {'screen_size': 'default', 'url': 'https://example.com/default.jpg'},
+            {'screen_size': 'medium', 'url': 'https://example.com/medium.jpg'},
+            {'screen_size': 'high', 'url': 'https://example.com/high.jpg'},
+        ]
+        thumbnails = get_video_thumbnails(result)
+        self.assertEqual(len(thumbnails), 3)
+        for expected in expected_output:
+            self.assertIn(expected, thumbnails)
+
+    def test_get_video_thumbnails_empty(self):
+        """Test extraction with no thumbnails present."""
+        result = {
+            'snippet': {
+                'thumbnails': {}
+            }
+        }
+        thumbnails = get_video_thumbnails(result)
+        self.assertEqual(thumbnails, [])
 
 class VideoAPITests(TestCase):
 
