@@ -1,6 +1,8 @@
+import datetime
 from django.test import TestCase, Client
 from django.urls import reverse
 from . import models
+from .services import get_desired_video_details
 
 class VideoAPITests(TestCase):
 
@@ -29,3 +31,43 @@ class VideoAPITests(TestCase):
         # or specific keys if data is expected. For a basic test, status 200 is sufficient.
         # For example, if it's okay for it to return an empty list initially:
         # self.assertEqual(response.json().get('results', []), [])
+
+    def test_get_desired_video_details(self):
+        """Test the utility function get_desired_video_details."""
+        # Scenario 1: Response with videoId
+        result_with_id = {
+            'id': {'videoId': 'test_video_123'},
+            'snippet': {
+                'title': 'Test Title',
+                'description': 'Test Description',
+                'channelId': 'test_channel_456',
+                'publishedAt': '2023-10-27T12:00:00Z'
+            }
+        }
+        expected_with_id = {
+            'title': 'Test Title',
+            'description': 'Test Description',
+            'video_id': 'test_video_123',
+            'channel_id': 'test_channel_456',
+            'publish_date_time': datetime.datetime(2023, 10, 27, 12, 0, 0)
+        }
+        self.assertEqual(get_desired_video_details(result_with_id), expected_with_id)
+
+        # Scenario 2: Response without videoId
+        result_without_id = {
+            'id': {'channelId': 'test_channel_only'},
+            'snippet': {
+                'title': 'Channel Title',
+                'description': 'Channel Description',
+                'channelId': 'test_channel_only',
+                'publishedAt': '2023-10-27T15:30:00Z'
+            }
+        }
+        expected_without_id = {
+            'title': 'Channel Title',
+            'description': 'Channel Description',
+            'video_id': '',
+            'channel_id': 'test_channel_only',
+            'publish_date_time': datetime.datetime(2023, 10, 27, 15, 30, 0)
+        }
+        self.assertEqual(get_desired_video_details(result_without_id), expected_without_id)
