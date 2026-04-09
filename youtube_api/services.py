@@ -23,10 +23,9 @@ def fetch_result_for_search_query(query, max_results):
     """
     api_keys = models.APIKey.objects.filter(is_limit_over=False)
 
-    if not len(api_keys):
+    api_key_obj = api_keys.first()
+    if not api_key_obj:
         return {}
-
-    api_key_obj = api_keys[0]
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
@@ -166,7 +165,7 @@ def start_service():
     """
     while True:
         api_keys = models.APIKey.objects.filter(is_limit_over=False)
-        if len(api_keys):
+        if api_keys.exists():
             asyncio.run(search_and_store_youtube_videos())
         time.sleep(TIME_INTERVAL)
 
