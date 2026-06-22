@@ -10,4 +10,3 @@ urlpatterns = [
     path('add_key', views.AddAPIKey.as_view(), name='add_key'),
 ]
 
-# services.THREAD.start() # Moved to AppConfig

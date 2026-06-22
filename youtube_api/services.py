@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import threading
 import time
 
 from apiclient.discovery import build
@@ -175,4 +174,3 @@ def start_service():
 
 
 THREAD_STARTED_FLAG = False
-THREAD = threading.Thread(target=start_service, daemon=True)
