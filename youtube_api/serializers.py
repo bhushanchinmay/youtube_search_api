@@ -19,7 +19,7 @@ class VideoSerializer(serializers.ModelSerializer):
         """
         return [
             VideoThumbNailSerializer(thumbnail).data
-            for thumbnail in models.VideoThumbnail.objects.filter(video=obj)]
+            for thumbnail in obj.thumbnail.all()]
 
     class Meta:
         model = models.Video

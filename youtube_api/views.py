@@ -25,7 +25,7 @@ class GetVideos(generics.ListAPIView):
         api_keys = models.APIKey.objects.filter(is_limit_over=False)
         if not api_keys.exists():
             raise exceptions.ValidationError("APIKey Quota is over, Add a new APIKey")
-        return models.Video.objects.all().order_by('-publish_date_time')
+        return models.Video.objects.all().order_by('-publish_date_time').prefetch_related('thumbnail')
 
 
 class AddAPIKey(generics.CreateAPIView):
