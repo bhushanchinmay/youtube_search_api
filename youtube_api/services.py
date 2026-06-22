@@ -108,10 +108,6 @@ def store_video_to_db(result):
 
     models.VideoThumbnail.objects.bulk_create(thumbnail_objs)
 
-    # closing all connections
-    for conn in connections.all():
-        conn.close()
-
 
 def get_most_recent_video_time():
     """get most recent time for uploaded video.
@@ -133,6 +129,11 @@ def get_most_recent_video_time():
             recent_date_time = video_date_time_obj
 
         recent_date_time = max(recent_date_time, video_date_time_obj)
+
+    # closing all connections
+    for conn in connections.all():
+        conn.close()
+
     return recent_date_time
 
 
@@ -159,6 +160,10 @@ async def search_and_store_youtube_videos():
             if resent_date_time < video_date_time_obj:
                 store_video_to_db(result)
                 resent_date_time = video_date_time_obj
+
+        # closing all connections
+        for conn in connections.all():
+            conn.close()
 
         await asyncio.sleep(10)
 
