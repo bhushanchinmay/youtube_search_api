@@ -26,6 +26,17 @@ API to fetch latest videos sorted in reverse chronological order of their publis
 *   Install dependencies
     > pip install -r requirements.txt
 
+### Environment
+
+Set `SECRET_KEY` to a unique secret before any Django command. There is no fixed fallback.
+Set `ALLOWED_HOSTS` to a comma-separated list, for example `localhost,127.0.0.1`.
+`DEBUG` defaults to `false`. Enable it only for local development.
+If a deployed instance used the old fixed key, replace it and invalidate old sessions.
+
+`YOUTUBE_BACKGROUND_SERVICE=false` disables the poller. Tests and maintenance
+commands skip it automatically. The built-in poller runs once per process;
+use one polling process to avoid duplicate work in a multi-worker deployment.
+
 ### 2. Database
 
 *   Set up the **database**
@@ -101,9 +112,15 @@ Add a new YouTube Data API Key.
 
 *   **URL**: `/youtube_api/add_key`
 *   **Method**: `POST`
+*   **Authentication**: An authenticated Django user is required. Use HTTP Basic authentication over HTTPS or a session with a valid CSRF token.
 *   **Body**:
     ```json
     {
         "key": "YOUR_API_KEY"
     }
     ```
+
+## Tests
+
+Run `SECRET_KEY=test-only-key YOUTUBE_BACKGROUND_SERVICE=false python manage.py test`.
+Tests use a separate database and mock YouTube calls. They do not need a real API key.

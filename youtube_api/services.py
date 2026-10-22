@@ -1,16 +1,17 @@
-import asyncio
 import datetime
-import threading
 import time
+import logging
 
 from apiclient.discovery import build
 from googleapiclient.errors import HttpError
-from django.db import connections
+from django.db import close_old_connections, transaction
 
 from . import models
 
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
+logger = logging.getLogger(__name__)
+
 TIME_INTERVAL = 10  # specify time interval for fetching the results
 
 
@@ -21,12 +22,10 @@ def fetch_result_for_search_query(query, max_results):
     :param max_results: maximum number of results using the youtube_api.
     :return: dictionary of all the videos.
     """
-    api_keys = models.APIKey.objects.filter(is_limit_over=False)
+    api_key_obj = models.APIKey.objects.filter(is_limit_over=False).first()
 
-    if not api_keys.exists():
+    if api_key_obj is None:
         return {}
-
-    api_key_obj = api_keys.first()
 
     try:
         youtube_object = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
@@ -91,6 +90,7 @@ def get_video_thumbnails(result):
     } for screen_size in thumbnails]
 
 
+@transaction.atomic
 def store_video_to_db(result):
     """store video and thumbnails to database.
 
@@ -107,10 +107,6 @@ def store_video_to_db(result):
         thumbnail_objs.append(models.VideoThumbnail(**thumbnail))
 
     models.VideoThumbnail.objects.bulk_create(thumbnail_objs)
-
-    # closing all connections
-    for conn in connections.all():
-        conn.close()
 
 
 def get_most_recent_video_time():
@@ -133,46 +129,36 @@ def get_most_recent_video_time():
             recent_date_time = video_date_time_obj
 
         recent_date_time = max(recent_date_time, video_date_time_obj)
+
     return recent_date_time
 
 
-async def search_and_store_youtube_videos():
-    """asynchronous function for fetching and storing the latest videos for a search query.
-
-    """
-    resent_date_time = get_most_recent_video_time()
-
-    if resent_date_time is None:
-        resent_date_time = datetime.datetime.min
-
-    while True:
-        search_results = fetch_result_for_search_query('today news', 10)
-
-        if not search_results:
-            await asyncio.sleep(10)
+def search_and_store_youtube_videos():
+    """Fetch and store one batch, using synchronous Django database calls."""
+    # Check the stored watermark once so response order cannot drop newer videos.
+    latest = models.Video.objects.order_by('-publish_date_time').first()
+    latest_time = latest.publish_date_time if latest else datetime.datetime.min
+    for result in fetch_result_for_search_query('today news', 10):
+        if not result.get('id', {}).get('videoId'):
             continue
-
-        for result in search_results:
-            video_date_time_obj = get_date_time_object_from_string(
-                result['snippet']['publishedAt'])
-
-            if resent_date_time < video_date_time_obj:
-                store_video_to_db(result)
-                resent_date_time = video_date_time_obj
-
-        await asyncio.sleep(10)
+        published = get_date_time_object_from_string(result['snippet']['publishedAt'])
+        if published >= latest_time and not models.Video.objects.filter(
+                video_id=result['id']['videoId']).exists():
+            store_video_to_db(result)
 
 
 def start_service():
-    """start the service for searching and storing youtube videos for every 10 seconds.
-
-    """
+    """Poll periodically and release stale connections at batch boundaries."""
     while True:
-        api_keys = models.APIKey.objects.filter(is_limit_over=False)
-        if api_keys.exists():
-            asyncio.run(search_and_store_youtube_videos())
+        close_old_connections()
+        try:
+            if models.APIKey.objects.filter(is_limit_over=False).exists():
+                search_and_store_youtube_videos()
+        except Exception:
+            logger.exception('YouTube polling failed; retrying on the next interval.')
+        finally:
+            close_old_connections()
         time.sleep(TIME_INTERVAL)
 
 
 THREAD_STARTED_FLAG = False
-THREAD = threading.Thread(target=start_service, daemon=True)
