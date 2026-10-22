@@ -1,5 +1,4 @@
-from django import forms
-from rest_framework import generics, exceptions
+from rest_framework import generics, exceptions, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import JSONRenderer
 
@@ -22,14 +21,15 @@ class GetVideos(generics.ListAPIView):
 
     def get_queryset(self):
         api_keys = models.APIKey.objects.filter(is_limit_over=False)
-        if not len(api_keys):
+        if not api_keys.exists():
             raise exceptions.ValidationError("APIKey Quota is over, Add a new APIKey")
-        return models.Video.objects.all().order_by('-publish_date_time')
+        return models.Video.objects.all().order_by('-publish_date_time').prefetch_related('thumbnail')
 
 
 class AddAPIKey(generics.CreateAPIView):
     """view for adding a new Youtube Data API Key in the database.
 
     """
+    permission_classes = [permissions.IsAuthenticated]
     renderer_classes = [JSONRenderer]
     serializer_class = serializers.APIKeySerializer
